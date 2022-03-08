@@ -88,7 +88,7 @@ class PCSParser(ABC):
         raise Exception("ERROR: parameter configuration space format is not supported.")
         sys.exit()
 
-    @staticmethod
+
     def check_validity(self) -> bool:
         """
         Check the validity of the pcs
