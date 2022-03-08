@@ -1,7 +1,13 @@
-# README #
+# pcsparser #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+pcsparser is a helper libary that parses and compiles from and to different parameter configuration space conventions.
+Parameter configuration spaces are needed for automated algorithm configuration.
 
+## Supported pcs conventions ##
+* SMAC 2.8
+* ParamILS 3.0.0 (this includes MO-ParamILS)
+
+*the following is automatically generated and needs to be fixed in the future.*
 ### What is this repository for? ###
 
 * Quick summary
