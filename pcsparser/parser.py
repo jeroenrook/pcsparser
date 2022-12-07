@@ -55,6 +55,13 @@ class PCSObject(ABC):
     def clear(self):
         self.params = []
 
+    def get(self, name) -> dict:
+        names = {p["name"]: i for i, p in enumerate(self.params) if "name" in p}
+        if name in names:
+            return self.params[names[name]]
+        return None
+
+
 
 class PCSConvention(Enum):
     """
@@ -128,7 +135,6 @@ class PCSParser(ABC):
             pcs = ParamILSParser(self).compile()
         else:
             raise Exception("ERROR: Exporting the pcs convention for {} is not yet implemented.".format(convention.value))
-
         with open(destination, "w") as fh:
             fh.write(pcs)
             fh.close()
@@ -151,7 +157,7 @@ class SMACParser(PCSParser):
                 continue
 
             # CONSTRAINTS
-            regex = r"(?P<parameter>\w+)\s*\|(?P<conditions>.+)\s*#*(?P<comment>.*)"
+            regex = r"(?P<parameter>[^\s\"',]+)\s*\|\s*(?P<conditions>.+)\s*#*(?P<comment>.*)"
             m = re.match(regex, line)
             if m is not None:
                 constraint = m.groupdict()
@@ -249,7 +255,7 @@ class SMACParser(PCSParser):
 
     @staticmethod
     def _parse_condition(condition: str) -> dict:
-        cont = True
+        cont = False
 
         m = re.match(
             r"\s*(?P<parameter>[^\s\"',]+)\s*(?P<quantifier>==|!=|<|>|<=|>=)\s*(?P<value>[^\s\"',]+)\s*",
@@ -259,9 +265,9 @@ class SMACParser(PCSParser):
                 **m.groupdict(),
                 "type": "numerical",
             }
-            cont = False
+            cont = True
 
-        if cont:
+        if not cont:
             m = re.match(r"\s*(?P<parameter>[^\s\"',]+)\s+in\s*\{(?P<items>[^\}]+)\}\s*", condition)
             if m is not None:
                 condition = {
@@ -269,6 +275,7 @@ class SMACParser(PCSParser):
                     "type": "categorical",
                 }
                 condition["items"] = re.split(r",\s*", condition["items"])
+            cont = True
 
         if not cont:
             raise Exception(f"ERROR: Couldn't parse '{condition}'")
@@ -301,7 +308,14 @@ class ParamILSParser(PCSParser):
 
                     (minval, maxval) = [int(i) for i in item["domain"]]
                     if item["scale"] != "log":
-                        domain = f"{minval}, {(minval + 1)}..{maxval}"
+                        # domain = f"{minval}, {(minval + 1)}..{maxval}"
+                        domain = list(np.linspace(minval, maxval, granularity))
+                        domain = list(set(np.round(domain).astype(int))) #Cast to int
+                        if int(item["default"]) not in domain:
+                            domain += [int(item["default"])]
+                        domain.sort()
+
+                        domain = ",".join([str(i) for i in domain])
                     else:
                         domain = list(np.unique(np.geomspace(minval, maxval, granularity, dtype=int)))
                         # add default value
@@ -317,8 +331,15 @@ class ParamILSParser(PCSParser):
                     (minval, maxval) = [float(i) for i in item["domain"]]
                     if item["scale"] != "log":
                         stepsize = (maxval - minval) / granularity
-                        default = float(item["default"])
-                        domain = f"{minval}, {(minval + stepsize)}..{maxval}"
+                        # default = float(item["default"])
+                        # domain = f"{minval}, {(minval + stepsize)}..{maxval}"
+
+                        domain = list(np.linspace(minval, maxval, granularity))
+                        if float(item["default"]) != domain:
+                            domain += [float(item["default"])]
+                            domain.sort()
+                        domain = ",".join([str(i) for i in domain])
+
                         # TODO how to integrate the default
                     else:
                         domain = list(np.unique(np.geomspace(minval, maxval, granularity, dtype=float)))
@@ -338,7 +359,7 @@ class ParamILSParser(PCSParser):
 
         for item in self.pcs.params:
             if item["type"] == "constraint":
-                line = "{parameter}|".format(**item)
+                line = "{parameter} | ".format(**item)
                 line += self._compile_conditions(item["conditions"])
                 if item["comment"] != "":
                     line += " #{}".format(item["comment"])
@@ -370,7 +391,13 @@ class ParamILSParser(PCSParser):
                 pass
             else:
                 if condition["type"] == "numerical":
-                    line += "{parameter} {quantifier} {value}".format(**condition)
+                    line += "{parameter} in ".format(**condition) + "{"
+                    param = self.pcs.get(condition["parameter"])
+                    print(param)
+                    if param["structure"] == "categorical":
+                        if condition["value"] in param["domain"]:
+                            line += f"{condition['value']}" + "}"
+                    #line += "{parameter} {quantifier} {value}".format(**condition)
                 if condition["type"] == "categorical":
                     itemss = ", ".join(condition["items"])
                     line += "{parameter} in {{{itemss}}}".format(**condition, itemss=itemss)
