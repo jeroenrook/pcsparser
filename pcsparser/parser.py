@@ -348,7 +348,10 @@ class ParamILSParser(PCSParser):
                             domain += [float(item["default"])]
                             domain.sort()
 
-                        domain = ",".join([f"{i}" for i in domain])
+                        # Filter duplicated in string format
+                        domain = list(set([f"{i}" for i in domain]))
+                        domain.sort(key=float)
+                        domain = ",".join(domain)
 
                 domain = "{" + domain + "}"
                 line = "{name} {domainl} [{default}]".format(**item, domainl=domain)
