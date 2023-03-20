@@ -330,28 +330,18 @@ class ParamILSParser(PCSParser):
 
                     (minval, maxval) = [float(i) for i in item["domain"]]
                     if item["scale"] != "log":
-                        stepsize = (maxval - minval) / granularity
-                        # default = float(item["default"])
-                        # domain = f"{minval}, {(minval + stepsize)}..{maxval}"
-
                         domain = list(np.linspace(minval, maxval, granularity))
-                        if float(item["default"]) != domain:
-                            domain += [float(item["default"])]
-                            domain.sort()
-                        domain = ",".join([str(i) for i in domain])
-
-                        # TODO how to integrate the default
                     else:
                         domain = list(np.unique(np.geomspace(minval, maxval, granularity, dtype=float)))
-                        # add default value
-                        if float(item["default"]) not in domain:
-                            domain += [float(item["default"])]
-                            domain.sort()
+                    # add default value
+                    if float(item["default"]) not in domain:
+                        domain += [float(item["default"])]
+                        domain.sort()
 
-                        # Filter duplicated in string format
-                        domain = list(set([f"{i}" for i in domain]))
-                        domain.sort(key=float)
-                        domain = ",".join(domain)
+                    # Filter duplicated in string format
+                    domain = list(set([f"{i}" for i in domain]))
+                    domain.sort(key=float)
+                    domain = ",".join(domain)
 
                 domain = "{" + domain + "}"
                 line = "{name} {domainl} [{default}]".format(**item, domainl=domain)
