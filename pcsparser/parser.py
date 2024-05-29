@@ -62,7 +62,6 @@ class PCSObject(ABC):
         return None
 
 
-
 class PCSConvention(Enum):
     """
     Internal pcs convention enum
@@ -80,7 +79,7 @@ class PCSParser(ABC):
         file
     """
 
-    def __init__(self,inherit=None):
+    def __init__(self, inherit=None):
         if inherit is None:
             self.pcs = PCSObject()
         else:
